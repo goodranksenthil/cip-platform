@@ -118,6 +118,70 @@ def _first(rx: str, text: str, src: str, conf: float, group: int = 1, flags=re.I
 
 LABEL = r"[ \t]*[:#\-][ \t]*"
 
+# ---- denial reason --------------------------------------------------------------------
+DENIAL_REASONS = [
+    ("MEDICAL_NECESSITY", r"not\s+medically\s+necessary|medical(?:ly)?\s+necess\w*|does\s+not\s+meet\s+(?:the\s+)?(?:medical\s+)?"
+                          r"(?:necessity\s+)?criteria|criteria\s+(?:were\s+|was\s+|are\s+)?not\s+met|not\s+clinically\s+indicated"),
+    ("INSUFFICIENT_DOCS", r"insufficient\s+(?:clinical\s+|medical\s+|supporting\s+)?(?:documentation|information|records|evidence)"
+                          r"|(?:missing|incomplete|inadequate|lack\s+of)\s+(?:clinical\s+|medical\s+|supporting\s+)?"
+                          r"(?:documentation|records|information|notes)"
+                          r"|documentation\s+(?:was\s+|is\s+)?(?:not\s+(?:provided|received|submitted)|insufficient|incomplete)"),
+    ("OUT_OF_NETWORK", r"out[\s-]+of[\s-]+network|non[\s-]?participating|not\s+(?:an?\s+)?in[\s-]network|outside\s+(?:the\s+|our\s+)?network"),
+    ("EXPERIMENTAL", r"experimental|investigational|unproven"),
+]
+REASON_LINE = r"(?:reason\s+for\s+(?:the\s+)?(?:denial|determination|decision)|denial\s+reason|basis\s+(?:for|of)\s+(?:the\s+)?denial)" \
+              r"[ \t]*[:\-][^\n]*"
+
+
+def find_denial_reason(text: str, src: str) -> Found | None:
+    """A labelled "Reason for denial:" line wins; otherwise the first reason found anywhere."""
+    scopes = [(m.group(0), 0.9) for m in re.finditer(REASON_LINE, text, re.I)] + [(text, 0.8)]
+    for scope, conf in scopes:
+        for code, rx in DENIAL_REASONS:
+            if m := re.search(rx, scope, re.I):
+                return Found(code, conf, src, _snip(scope, m))
+    return None
+
+
+# ---- weeks of conservative therapy ----------------------------------------------------
+_WORD_NUM = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen".split())}
+_NUM = r"(\d{1,2}|" + "|".join(_WORD_NUM) + r")"
+_UNIT = r"[\s-]*(weeks?|wks?|months?|mos?)\b"
+_THERAPY = (r"(?:conservative\s+(?:therapy|treatment|management|care|measures)|physio\w*|physical\s+therapy|\bPT\b"
+            r"|chiropract\w*|NSAIDs?|anti-?inflammator\w*|home\s+exercise\w*|exercise\s+program\w*|rest\b|bracing"
+            r"|epidural\w*|injections?|therapy|treatment)")
+
+
+def _to_weeks(num: str, unit: str) -> int | None:
+    n = int(num) if num.isdigit() else _WORD_NUM.get(num.lower())
+    if n is None:
+        return None
+    weeks = n * 4 if unit.lower().startswith("mo") else n
+    return weeks if 0 < weeks <= 104 else None
+
+
+def find_conservative_weeks(text: str, src: str) -> Found | None:
+    """Duration of conservative therapy in weeks, from the many ways notes phrase it.
+
+    "8 weeks of physiotherapy", "6-week course of PT", "physical therapy for 6 weeks",
+    "PT x 6 wks", "failed six weeks", "3 months of conservative care" (= 12 weeks),
+    "Conservative therapy (weeks): 6".
+    """
+    patterns = [
+        (rf"weeks?\s+of\s+conservative\s+\w+[^:\n]{{0,15}}[:#\-]\s*{_NUM}()", 0.9),                       # labelled field
+        (rf"conservative\s+\w+\s*\(\s*weeks?\s*\)\s*[:#\-]?\s*{_NUM}()", 0.9),
+        (rf"\b{_NUM}{_UNIT}(?!\s+(?:ago|later|after|post|prior|before|follow))\s+(?:\w+\s+){{0,4}}?{_THERAPY}", 0.75),  # N weeks (of) PT
+        (rf"{_THERAPY}[^.\n]{{0,40}}?(?:for|x|×|over|of|during|lasting)\s*(?:the\s+(?:last|past)\s+)?{_NUM}{_UNIT}", 0.75),
+        (rf"(?:failed|completed|tried|underwent|despite)\s+(?:a\s+|an\s+)?{_NUM}{_UNIT}", 0.65),
+    ]
+    for rx, conf in patterns:
+        for m in re.finditer(rx, text, re.I):
+            weeks = _to_weeks(m.group(1), m.group(2) or "weeks")
+            if weeks is not None:
+                return Found(weeks, conf, src, _snip(text, m))
+    return None
+
 
 def extract_fields(text: str, src: str) -> dict[str, Found]:
     f: dict[str, Found] = {}
@@ -180,16 +244,8 @@ def extract_fields(text: str, src: str) -> dict[str, Found]:
             f["urgency_justification"] = Found(sent.group(0).strip()[:400], 0.6, src, "sentence mentioning urgency")
 
     put("original_auth_number", _first(r"\b(PA-\d{6})\b", text, src, 0.95))
-    for code, rx in [("MEDICAL_NECESSITY", r"not medically necessary|medical necessity"),
-                     ("INSUFFICIENT_DOCS", r"insufficient (?:clinical )?documentation"),
-                     ("OUT_OF_NETWORK", r"out[- ]of[- ]network"),
-                     ("EXPERIMENTAL", r"experimental|investigational")]:
-        if m := re.search(rx, low):
-            put("denial_reason", Found(code, 0.8, src, _snip(text, m)))
-            break
-    put("conservative_therapy_weeks", _first(
-        r"(\d{1,2})\s*weeks?\s*(?:of\s*)?(?:conservative|physio\w*|physical therapy|therapy|nsaids?)", text, src, 0.75, post=int)
-        or _first(r"(?:failed|completed)\s*(\d{1,2})\s*weeks?", text, src, 0.65, post=int))
+    put("denial_reason", find_denial_reason(text, src))
+    put("conservative_therapy_weeks", find_conservative_weeks(text, src))
     put("admission_date", _first(rf"admission\s*date{LABEL}{DATE_RX}", text, src, 0.85, post=parse_date))
     put("length_of_stay", _first(r"(?:length of stay|LOS)\D{0,12}(\d{1,3})\s*days?", text, src, 0.8, post=int))
     put("date_of_service", _first(rf"date\s*of\s*service{LABEL}{DATE_RX}", text, src, 0.85, post=parse_date))

@@ -3,6 +3,8 @@ import hashlib
 import io
 import json
 
+import pytest
+
 from app.services import document_reader
 from app.workers import drain
 from tests.sample_docs import DENIAL_PARAS, REFERRAL_LINES, make_docx, make_pdf
@@ -29,6 +31,46 @@ def test_docx_text_and_field_extraction():
 def test_pdf_reading_matches_docx():
     pdf_text = document_reader.read_text(PDF, "application/pdf")
     assert document_reader.extract_fields(pdf_text, "x.pdf")["member_id"].value == "W318840027"
+
+
+@pytest.mark.parametrize("sentence, weeks", [
+    ("Failed 8 weeks of physiotherapy and NSAIDs.", 8),            # original sample wording
+    ("Completed physical therapy for 6 weeks without relief.", 6),
+    ("PT x 6 wks, no improvement.", 6),
+    ("She tried six weeks of conservative management.", 6),
+    ("6-week course of physical therapy completed.", 6),
+    ("Conservative care for the past 3 months.", 12),
+    ("Weeks of conservative therapy: 10", 10),
+    ("Conservative therapy (weeks): 7", 7),
+    ("Despite 9 weeks of NSAIDs and home exercises, pain persists.", 9),
+])
+def test_conservative_therapy_weeks_phrasings(sentence, weeks):
+    f = document_reader.extract_fields(f"Plan: MRI lumbar spine.\n{sentence}", "x")
+    assert f["conservative_therapy_weeks"].value == weeks
+
+
+def test_unrelated_week_mentions_are_not_therapy():
+    f = document_reader.extract_fields("Symptoms started 2 weeks ago. Plan: MRI lumbar spine.", "x")
+    assert "conservative_therapy_weeks" not in f
+
+
+@pytest.mark.parametrize("sentence, code", [
+    ("The request was denied as not medically necessary.", "MEDICAL_NECESSITY"),
+    ("Denied due to lack of medical necessity.", "MEDICAL_NECESSITY"),
+    ("The service does not meet medical necessity criteria.", "MEDICAL_NECESSITY"),
+    ("Criteria were not met for this imaging study.", "MEDICAL_NECESSITY"),
+    ("Denied for insufficient documentation.", "INSUFFICIENT_DOCS"),
+    ("Denied: incomplete clinical records were submitted.", "INSUFFICIENT_DOCS"),
+    ("Supporting documentation was not provided.", "INSUFFICIENT_DOCS"),
+    ("The provider is non-participating.", "OUT_OF_NETWORK"),
+    ("Service rendered out of network.", "OUT_OF_NETWORK"),
+    ("This procedure is considered investigational.", "EXPERIMENTAL"),
+    # a labelled reason line wins over other wording elsewhere in the letter
+    ("We reviewed medical necessity guidelines.\nReason for denial: missing documentation", "INSUFFICIENT_DOCS"),
+])
+def test_denial_reason_phrasings(sentence, code):
+    f = document_reader.extract_fields(f"NOTICE OF ADVERSE DETERMINATION\n{sentence}", "x")
+    assert f["denial_reason"].value == code
 
 
 def test_invalid_npi_is_not_prefilled():
@@ -97,8 +139,6 @@ def test_classic_wizard_still_rejects_docx(client):
                     files=[("doc__clinical_notes", ("note.docx", DOCX, document_reader.DOCX_MIME))])
     assert r.status_code == 415
 
-
-import pytest  # noqa: E402
 
 from tests.sample_docs import SCENARIOS  # noqa: E402
 
