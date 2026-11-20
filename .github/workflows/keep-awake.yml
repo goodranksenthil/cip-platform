@@ -1,0 +1,22 @@
+# Render's free web service sleeps after 15 minutes without traffic. While asleep the first
+# request takes ~1 minute and the outbox relay / consumers stop, so the hosted demo stops
+# behaving like localhost. Pinging the health endpoint keeps it awake (one free instance
+# running all month fits inside Render's 750 free hours). Delete this once on a paid plan.
+name: keep-awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping API health
+        run: curl --fail --silent --show-error --max-time 120 --retry 3 --retry-delay 20 https://cip-api-lapw.onrender.com/api/health
+      - name: Ping web app
+        run: curl --fail --silent --show-error --max-time 60 -o /dev/null https://cip-platform-one.vercel.app/
