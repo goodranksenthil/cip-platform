@@ -36,9 +36,11 @@ Use **one region** for Supabase and Render (the blueprint uses `singapore`; pick
    - Use the **session** pooler (port 5432). It works over IPv4, which Render needs.
      The transaction pooler (6543) also works, but session mode is the safer default.
    - Paste it as-is: the app adds the `+psycopg` driver and `sslmode=require` itself.
-3. **Project Settings → API**: copy the **Project URL** (`CIP_SUPABASE_URL`) and the
-   **service_role** secret (`CIP_SUPABASE_SERVICE_ROLE_KEY`). The service-role key bypasses all
-   security: it goes only into Render, never into Vercel or the browser.
+3. Copy the **Project URL** (`CIP_SUPABASE_URL`, e.g. `https://<ref>.supabase.co`) and a
+   **secret** key (`CIP_SUPABASE_SERVICE_ROLE_KEY`): **Project Settings → API Keys → Secret keys**
+   (`sb_secret_…`), or the legacy **service_role** key (`eyJ…`); both work. **Not** the
+   publishable key (`sb_publishable_…`): it can't reach the private bucket. The secret key
+   bypasses all security: it goes only into Render, never into Vercel or the browser.
 4. Nothing else to create. On first start the API creates the tables, triggers, the
    `dcn_seq` sequence, the private `cip-documents` bucket, and turns **Row Level Security on
    for every table** so the public Data API (anon key) can't read the PHI tables.

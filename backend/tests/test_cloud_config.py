@@ -21,7 +21,7 @@ class FakeSupabaseStorage:
         self.auth: list[str] = []
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
-        self.auth.append(req.headers.get("authorization", ""))
+        self.auth.append((req.headers.get("authorization", ""), req.headers.get("apikey", "")))
         path = req.url.path.removeprefix("/storage/v1")
         if path.startswith("/bucket"):
             if req.method == "GET":
@@ -52,12 +52,19 @@ def fake():
 
 @pytest.fixture
 def store(fake):
-    return SupabaseBlobStore(BASE, "service-key", "cip-docs", client=httpx.Client(transport=httpx.MockTransport(fake)))
+    return SupabaseBlobStore(BASE, "sb_secret_abc", "cip-docs", client=httpx.Client(transport=httpx.MockTransport(fake)))
 
 
 def test_bucket_is_created_private(fake, store):
     assert fake.buckets["cip-docs"]["public"] is False
-    assert all(a == "Bearer service-key" for a in fake.auth)
+    # new-style secret key: apikey header only, never as a Bearer token
+    assert all(a == ("", "sb_secret_abc") for a in fake.auth)
+
+
+def test_legacy_jwt_service_role_key_also_sent_as_bearer(fake):
+    jwt = "eyJhbGciOiJIUzI1NiJ9.e30.sig"
+    SupabaseBlobStore(BASE, jwt, "cip-docs", client=httpx.Client(transport=httpx.MockTransport(fake)))
+    assert all(a == (f"Bearer {jwt}", jwt) for a in fake.auth)
 
 
 def test_put_open_metadata_append_delete_roundtrip(fake, store):

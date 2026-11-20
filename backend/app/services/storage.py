@@ -138,7 +138,12 @@ class SupabaseBlobStore:
         if not self.url or not key:
             raise RuntimeError("CIP_STORAGE_BACKEND=supabase needs CIP_SUPABASE_URL and CIP_SUPABASE_SERVICE_ROLE_KEY")
         self.http = client or httpx.Client(timeout=60)
-        self.http.headers.update({"Authorization": f"Bearer {key}", "apikey": key})
+        # Legacy service_role keys are JWTs and go in both headers. New secret keys
+        # (sb_secret_...) are not JWTs: Supabase accepts them only in `apikey` and mints
+        # the JWT itself, so a Bearer header with them would be rejected.
+        self.http.headers["apikey"] = key
+        if key.startswith("eyJ"):
+            self.http.headers["Authorization"] = f"Bearer {key}"
         self._ensure_bucket()
 
     # ------------------------------------------------------------------ helpers
