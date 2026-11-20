@@ -1,0 +1,18 @@
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.local
+.env.*.local
+.vercel/
+*.tsbuildinfo
+backend/storage/
+# Portable Windows bundle (66 MB, rebuilt locally / shared as a release asset, not in git)
+cip-runtime-win64.zip
+.db_ready
+.pytest_cache/
+runtime/
+pgdata/
+*.log

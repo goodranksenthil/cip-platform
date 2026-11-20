@@ -1,0 +1,46 @@
+# Render Blueprint — FastAPI backend (API + outbox relay/consumer workers in one service).
+# Render → New → Blueprint → pick this repo. Secrets marked `sync: false` are asked for once.
+# Database and file storage live in Supabase; see docs/DEPLOY.md.
+services:
+  - type: web
+    name: cip-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    buildFilter:
+      paths: ["backend/**"]   # frontend-only commits don't redeploy the API
+    region: singapore          # keep close to the Supabase project region
+    plan: starter              # free plan sleeps after 15 min idle, which pauses the workers
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: CIP_ENVIRONMENT
+        value: cloud
+      # Supabase → Connect → "Session pooler" URI (port 5432). Paste as-is, password filled in.
+      - key: CIP_DATABASE_URL
+        sync: false
+      - key: CIP_DB_POOL_SIZE
+        value: "5"
+      - key: CIP_DB_MAX_OVERFLOW
+        value: "5"
+      # At least 32 random characters. Losing it makes encrypted PHI unreadable — store it safely.
+      - key: CIP_FIELD_ENCRYPTION_KEY
+        generateValue: true
+      - key: CIP_STORAGE_BACKEND
+        value: supabase
+      - key: CIP_SUPABASE_URL
+        sync: false
+      - key: CIP_SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CIP_SUPABASE_BUCKET
+        value: cip-documents
+      # JSON list of the Vercel production URL(s), e.g. ["https://cip-console.vercel.app"]
+      - key: CIP_CORS_ORIGINS
+        sync: false
+      # Optional, for Vercel preview deployments, e.g. ^https://cip-console-[a-z0-9-]+\.vercel\.app$
+      - key: CIP_CORS_ORIGIN_REGEX
+        sync: false
+      - key: CIP_SEED_DEMO_DATA
+        value: "true"             # synthetic demo cases only; set false before any real data
+      - key: CIP_WORKERS_ENABLED
+        value: "true"

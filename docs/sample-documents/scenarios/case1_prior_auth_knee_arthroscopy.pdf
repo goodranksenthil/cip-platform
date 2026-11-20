@@ -1,0 +1,44 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 672 >>
+stream
+BT /F1 11 Tf 50 760 Td 15 TL
+(APOLLO ORTHO CENTRE - REQUEST FOR PRIOR AUTHORIZATION) '
+(Patient Name: Arjun Mehta) '
+(Date of Birth: 03/07/1978) '
+(Member ID: W410227315) '
+(Address: 45 MG Road, Indiranagar, Bengaluru, KA 560038) '
+(Requesting Provider NPI: 1234567893) '
+(History of present illness: right knee locking and pain for 5 months after a sports injury.) '
+(Exam: positive McMurray test, joint line tenderness. MRI confirms bucket-handle tear.) '
+(Assessment: S83.241A medial meniscus tear; M23.205 derangement of meniscus.) '
+(Plan: day-case knee arthroscopy with partial meniscectomy. CPT: 29881) '
+(Progress note signed by treating orthopaedic surgeon.) '
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000964 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1034
+%%EOF
