@@ -1,6 +1,16 @@
 # Render Blueprint — FastAPI backend (API + outbox relay/consumer workers in one service).
 # Render → New → Blueprint → pick this repo. Secrets marked `sync: false` are asked for once.
-# Database and file storage live in Supabase; see docs/DEPLOY.md.
+# Database: Render Postgres (free plan expires after 30 days; upgrade or switch to Supabase).
+# File storage: Supabase Storage. See docs/DEPLOY.md.
+databases:
+  - name: cip-db
+    plan: free
+    region: singapore
+    databaseName: cip_db
+    user: cip
+    postgresMajorVersion: "16"
+    ipAllowList: []            # no public access; only Render services in this workspace connect
+
 services:
   - type: web
     name: cip-api
@@ -16,9 +26,13 @@ services:
     envVars:
       - key: CIP_ENVIRONMENT
         value: cloud
-      # Supabase → Connect → "Session pooler" URI (port 5432). Paste as-is, password filled in.
+      # Render-managed Postgres (below), wired in automatically — no password is typed anywhere.
+      # To use Supabase Postgres instead, replace this with `sync: false` and paste the
+      # Supabase "Session pooler" URI (see docs/DEPLOY.md).
       - key: CIP_DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: cip-db
+          property: connectionString
       - key: CIP_DB_POOL_SIZE
         value: "5"
       - key: CIP_DB_MAX_OVERFLOW
