@@ -13,7 +13,7 @@
 |---|---|---|
 | React UI | **Vercel** | Static files on a global CDN, preview deploys per branch |
 | FastAPI + workers | **Render** (Docker web service) | Long-running process: the outbox relay and consumers run in a background thread; uploads up to 25 MB |
-| PostgreSQL 16 | **Supabase** | Managed Postgres with `pgcrypto`; triggers and `SKIP LOCKED` work unchanged |
+| PostgreSQL 16 | **Render Postgres** (`cip-db` in `render.yaml`, default) or **Supabase** | Render wires `CIP_DATABASE_URL` in automatically, so no password is pasted. The free Render database expires after 30 days: upgrade it, or switch to Supabase Postgres (step 1) by setting `CIP_DATABASE_URL` yourself |
 | Document files | **Supabase Storage** | Render's disk is wiped on every deploy/restart |
 
 > **PHI.** The demo seeds 40 *synthetic* cases. Before any real patient data: sign a HIPAA BAA
