@@ -7,7 +7,8 @@ import type {
 // Same origin by default (Vite proxy in dev, FastAPI serving dist/). On Vercel, set
 // VITE_API_BASE_URL to the Render URL, e.g. https://cip-api.onrender.com (no trailing slash).
 const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
-export const http = axios.create({ baseURL: `${API_ORIGIN}/api`, timeout: 60_000 })
+// 120 s: a sleeping free-tier host can take ~1 minute to wake up on the first request.
+export const http = axios.create({ baseURL: `${API_ORIGIN}/api`, timeout: 120_000 })
 
 /** Normalise FastAPI error shapes ({detail: string | {message, errors}}) into one Error type. */
 export class ApiError extends Error {

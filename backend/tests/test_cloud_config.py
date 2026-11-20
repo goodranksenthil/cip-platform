@@ -102,6 +102,17 @@ def test_missing_credentials_fail_fast():
         SupabaseBlobStore("", "", "b", client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200))))
 
 
+@pytest.mark.parametrize("env, flag, expected", [
+    ("local", None, True),       # localhost default: demo tools on
+    ("cloud", None, False),      # hosted default: off
+    ("cloud", True, True),       # hosted demo opts in (render.yaml)
+    ("local", False, False),     # explicit off wins
+])
+def test_demo_tools_switch(env, flag, expected):
+    from app.core.config import Settings
+    assert Settings(environment=env, demo_tools_enabled=flag).demo_tools is expected
+
+
 @pytest.mark.parametrize("raw, expected", [
     ("postgresql://postgres.ref:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres",
      "postgresql+psycopg://postgres.ref:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"),

@@ -151,9 +151,9 @@ def verify_document(doc_id: uuid.UUID, db: Session = Depends(get_db)):
 
 @router.post("/documents/{doc_id}/simulate-tamper")
 def simulate_tamper(doc_id: uuid.UUID, db: Session = Depends(get_db)):
-    """DEMO ONLY (local env): append bytes to the stored blob to prove tamper detection."""
-    if get_settings().environment != "local":
-        raise HTTPException(403, "Disabled outside local environment")
+    """DEMO ONLY: append bytes to the stored blob to prove tamper detection."""
+    if not get_settings().demo_tools:
+        raise HTTPException(403, "Demo tools are disabled (set CIP_DEMO_TOOLS_ENABLED=true for a demo deployment)")
     d = db.get(Document, doc_id)
     if not d:
         raise HTTPException(404, "Document not found")

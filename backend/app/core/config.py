@@ -42,6 +42,13 @@ class Settings(BaseSettings):
 
     prompt_max_chars: int = 2000  # CIP-PA-315
     seed_demo_data: bool = True
+    # Demo-only tools such as "Simulate tampering". Unset = enabled only when environment is
+    # "local". Set CIP_DEMO_TOOLS_ENABLED=true for a hosted demo; never for real data.
+    demo_tools_enabled: bool | None = None
+
+    @property
+    def demo_tools(self) -> bool:
+        return self.environment == "local" if self.demo_tools_enabled is None else self.demo_tools_enabled
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     # Optional regex for extra origins, e.g. Vercel preview deployments:
     # ^https://cip-[a-z0-9-]+\.vercel\.app$

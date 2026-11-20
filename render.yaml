@@ -56,5 +56,8 @@ services:
         sync: false
       - key: CIP_SEED_DEMO_DATA
         value: "true"             # synthetic demo cases only; set false before any real data
+      # Same demo features as localhost (e.g. "Simulate tampering"). Set false before real data.
+      - key: CIP_DEMO_TOOLS_ENABLED
+        value: "true"
       - key: CIP_WORKERS_ENABLED
         value: "true"
