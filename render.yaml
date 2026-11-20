@@ -10,7 +10,7 @@ services:
     buildFilter:
       paths: ["backend/**"]   # frontend-only commits don't redeploy the API
     region: singapore          # keep close to the Supabase project region
-    plan: starter              # free plan sleeps after 15 min idle, which pauses the workers
+    plan: free                 # no card needed; sleeps after 15 min idle (pauses workers). Use starter for always-on.
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
